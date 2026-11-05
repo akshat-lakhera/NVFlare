@@ -90,6 +90,17 @@ class TestDirichletLabelPartition:
         result = dirichlet_label_partition(labels, num_sites=10, alpha=0.05, seed=3, min_size=100)
         assert min(len(idx) for idx in result.site_indices.values()) >= 100
 
+    def test_zero_weight_fallback_keeps_full_sites_excluded(self):
+        """Sites at capacity must stay excluded when Dirichlet weight collapses to them."""
+        labels = np.repeat(np.arange(10), 1000)
+        result = dirichlet_label_partition(labels, num_sites=10, alpha=0.01, seed=118)
+        counts = result.class_counts[0]
+        capacity = len(labels) / 10
+        samples_before_class_6 = sum(counts.get(c, 0) for c in range(6))
+        # Site 0 is already at/over capacity before class 6; it must not receive all of class 6.
+        assert samples_before_class_6 >= capacity
+        assert counts.get(6, 0) < 1000
+
     def test_min_size_unreachable_raises(self, labels):
         with pytest.raises(ValueError, match="could not give every site"):
             dirichlet_label_partition(
